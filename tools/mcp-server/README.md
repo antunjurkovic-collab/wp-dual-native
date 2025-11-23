@@ -20,15 +20,32 @@ Add the following to your `claude_desktop_config.json`.
 - **Mac:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
+**Mac/Linux:**
 ```json
 {
   "mcpServers": {
     "wordpress": {
-      "command": "npm",
-      "args": ["start"],
-      "cwd": "/absolute/path/to/your/wp-dual-native/tools/mcp-server",
+      "command": "npx",
+      "args": ["-y", "tsx", "/absolute/path/to/your/wp-dual-native/tools/mcp-server/src/index.ts"],
       "env": {
-        "WP_URL": "https://your-site.local",
+        "WP_URL": "https://your-site.com",
+        "WP_USER": "your-username",
+        "WP_PASSWORD": "your-application-password"
+      }
+    }
+  }
+}
+```
+
+**Windows:**
+```json
+{
+  "mcpServers": {
+    "wordpress": {
+      "command": "npx",
+      "args": ["-y", "tsx", "C:\\Users\\YourName\\Desktop\\wp-dual-native\\tools\\mcp-server\\src\\index.ts"],
+      "env": {
+        "WP_URL": "https://your-site.com",
         "WP_USER": "your-username",
         "WP_PASSWORD": "your-application-password"
       }

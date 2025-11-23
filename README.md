@@ -72,18 +72,26 @@ This plugin includes a production-ready **Model Context Protocol (MCP)** server 
 
 ### Quick Start
 
-1.  **Configure:** Add this to your Claude Desktop config (`claude_desktop_config.json`):
+1.  **Install dependencies:**
+    ```bash
+    cd tools/mcp-server
+    npm install
+    ```
 
+2.  **Configure:** Add this to your Claude Desktop config:
+    - **Mac/Linux:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+    - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+    **Mac/Linux:**
     ```json
     {
       "mcpServers": {
         "wordpress": {
-          "command": "npm",
-          "args": ["start"],
-          "cwd": "/absolute/path/to/wp-dual-native/tools/mcp-server",
+          "command": "npx",
+          "args": ["-y", "tsx", "/absolute/path/to/wp-dual-native/tools/mcp-server/src/index.ts"],
           "env": {
-            "WP_URL": "https://your-site.local",
-            "WP_USER": "admin",
+            "WP_URL": "https://your-site.com",
+            "WP_USER": "your-username",
             "WP_PASSWORD": "your-application-password"
           }
         }
@@ -91,10 +99,21 @@ This plugin includes a production-ready **Model Context Protocol (MCP)** server 
     }
     ```
 
-2.  **Install:**
-    ```bash
-    cd tools/mcp-server
-    npm install
+    **Windows:**
+    ```json
+    {
+      "mcpServers": {
+        "wordpress": {
+          "command": "npx",
+          "args": ["-y", "tsx", "C:\\Users\\YourName\\Desktop\\wp-dual-native\\tools\\mcp-server\\src\\index.ts"],
+          "env": {
+            "WP_URL": "https://your-site.com",
+            "WP_USER": "your-username",
+            "WP_PASSWORD": "your-application-password"
+          }
+        }
+      }
+    }
     ```
 
 3.  **Run:** Restart Claude Desktop. You can now ask Claude to:
@@ -102,6 +121,25 @@ This plugin includes a production-ready **Model Context Protocol (MCP)** server 
     *   *"Analyze the publishing frequency of my last 50 posts."* (Data Science)
 
 For full documentation on the MCP tools and Python integration, see [tools/mcp-server/README.md](tools/mcp-server/README.md).
+
+## 📊 Benchmarks & Validation
+
+We include a suite of Python tools to verify performance claims and API integrity.
+
+- **`tools/validator/benchmark_api_vs_dni.py`**: Runs a live A/B test against the Standard WordPress REST API to measure payload size and token savings.
+- **`tools/validator/dual_native_validate.py`**: Validates ETag/CID parity and RFC 9530 Content-Digest integrity.
+
+**Performance Results:**
+- **56% smaller payloads** (17.94 KB → 8.65 KB)
+- **56% fewer tokens** (4,593 → 2,214)
+- **92% faster responses** (96ms → 8ms server-side)
+- **56% fewer database queries** (18 → 8)
+
+See [BENCHMARK.md](BENCHMARK.md) for AI cost analysis and [PERFORMANCE.md](PERFORMANCE.md) for infrastructure metrics.
+
+[View Validator Documentation](tools/validator/README.md)
+
+---
 
 ## FAQ
 

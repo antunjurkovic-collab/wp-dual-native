@@ -18,12 +18,42 @@ class DNI_Admin {
     }
 
     public static function register_settings(){
-        register_setting('dni', 'dni_llm_enabled');
-        register_setting('dni', 'dni_llm_provider');
-        register_setting('dni', 'dni_llm_api_url');
-        register_setting('dni', 'dni_llm_api_key');
-        register_setting('dni', 'dni_llm_model');
-        register_setting('dni', 'dni_llm_timeout');
+        // Enabled: cast to int (0/1)
+        register_setting('dni', 'dni_llm_enabled', array(
+            'type' => 'integer',
+            'sanitize_callback' => function($v){ return (int) !empty($v); },
+            'show_in_rest' => false,
+        ));
+        // Provider & model: sanitize text
+        register_setting('dni', 'dni_llm_provider', array(
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'show_in_rest' => false,
+        ));
+        register_setting('dni', 'dni_llm_model', array(
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'show_in_rest' => false,
+        ));
+        // API URL: ensure valid URL
+        register_setting('dni', 'dni_llm_api_url', array(
+            'type' => 'string',
+            'sanitize_callback' => 'esc_url_raw',
+            'show_in_rest' => false,
+        ));
+        // API Key: strip whitespace, sanitize text
+        register_setting('dni', 'dni_llm_api_key', array(
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'show_in_rest' => false,
+        ));
+        // Timeout: integer seconds, default 30
+        register_setting('dni', 'dni_llm_timeout', array(
+            'type' => 'integer',
+            'sanitize_callback' => 'absint',
+            'default' => 30,
+            'show_in_rest' => false,
+        ));
     }
 
     public static function render(){
@@ -79,4 +109,3 @@ class DNI_Admin {
 }
 
 DNI_Admin::init();
-

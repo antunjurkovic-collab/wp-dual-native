@@ -89,7 +89,14 @@ class DNI_MR {
         return $txt;
     }
 
-    private static function word_count(string $text): int { return max(0, str_word_count($text)); }
+    private static function word_count(string $text): int {
+        // Unicode-aware: count sequences of Unicode letters
+        if ($text === '') return 0;
+        if (preg_match_all('/\p{L}+/u', $text, $matches)) {
+            return (int) count($matches[0]);
+        }
+        return 0;
+    }
 
     private static function extract_blocks(WP_Post $post): array {
         $blocks = array();

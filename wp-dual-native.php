@@ -68,9 +68,15 @@ add_filter('rest_pre_serve_request', function($served, $result, $request, $serve
             // Treat as raw bytes (e.g., Markdown)
             $body = is_string($data) ? $data : (is_scalar($data) ? (string)$data : wp_json_encode($data));
             if ($body !== false && $body !== null){
+                // 1) Compute and send Content-Digest over final bytes
                 header('Content-Digest: sha-256=:' . base64_encode(hash('sha256', (string)$body, true)) . ':', true);
+                // 2) CRITICAL: Ensure standard WP REST headers are sent (Content-Type, ETag, Last-Modified)
+                if (!headers_sent()) {
+                    $server->send_headers($result);
+                }
+                // 3) Output strict bytes and short-circuit
                 echo (string)$body;
-                return true; // we served it
+                return true;
             }
         }
     } catch (Throwable $e) {

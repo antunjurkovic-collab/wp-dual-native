@@ -1,31 +1,81 @@
-# WordPress MCP Server (Dual‑Native)
+# WordPress MCP Server (Dual-Native)
 
-This MCP server exposes your Dual‑Native WordPress endpoints (MR JSON/Markdown, catalog, safe write) as Claude‑accessible tools.
+This MCP server exposes your WordPress site as a set of Agentic Tools for Claude Desktop. It leverages the Dual-Native API to provide safe, structured reading and writing capabilities.
 
-## Run
-- From this folder:
-```
+## Quick Start
+
+### 1. Installation
+
+Navigate to this folder and install dependencies:
+
+```bash
+cd tools/mcp-server
 npm install
-npm start
 ```
-- Env (set via shell or .env): `WP_URL`, `WP_USER`, `WP_PASSWORD` (Application Password).
 
-## Tools
-- read_mr / read_md / list_posts
-- append_block / append_blocks / insert_at_index / insert_blocks_at_index (all accept `if_match`; auto‑send latest cached ETag unless `force=true`)
-- apply_excerpt, set_title, set_slug, set_status
-- set_tags, set_categories (IDs), set_tags_by_names, set_categories_by_names
-- create_post
-- self_test (validates ETag=CID, 304s, Content‑Digest parity)
+### 2. Configure Claude Desktop
 
-## Data Science Demo
-- Start this server (above).
-- Start the official Python MCP (for code execution) using uvx:
+Add the following to your `claude_desktop_config.json`.
+
+- **Mac:** `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "wordpress": {
+      "command": "npm",
+      "args": ["start"],
+      "cwd": "/absolute/path/to/your/wp-dual-native/tools/mcp-server",
+      "env": {
+        "WP_URL": "https://your-site.local",
+        "WP_USER": "your-username",
+        "WP_PASSWORD": "your-application-password"
+      }
+    }
+  }
+}
 ```
-uvx mcp-server-python --stdio
-```
-- Configure Claude Desktop to include both servers. Then ask Claude to:
-  - Use `list_posts` / `read_mr` to fetch content
-  - Use the Python tools to analyze the catalog and plot stats
 
-This keeps the project lean and aligns with upstream MCP servers, rather than bundling multiple servers into one repo.
+## Available Tools
+
+### Reading (Machine Representation)
+
+- **`list_posts`**: Get a catalog of recent posts (supports status/since filters).
+- **`read_mr`**: Fetch the Machine Representation (JSON) of a post. Optimized for AI context (saves ~60% tokens vs HTML).
+- **`read_md`**: Fetch the raw Markdown content.
+
+### Writing (Safe Mutations)
+
+All write tools support **Optimistic Locking**. If you don't provide an `if_match` ETag, the server automatically uses the latest cached version (unless `force=true`).
+
+- **`append_block`** / **`append_blocks`**: Add content to the end of a post.
+- **`insert_at_index`** / **`insert_blocks_at_index`**: Inject content at a specific position.
+- **`create_post`**: Create a new draft.
+
+### Metadata & Management
+
+- **`set_title`**, **`set_slug`**, **`set_status`**, **`apply_excerpt`**
+- **`set_tags`**, **`set_categories`** (by ID)
+- **`set_tags_by_names`**, **`set_categories_by_names`** (by Name)
+
+### Diagnostics
+
+- **`self_test`**: Validates the API connection, ETag parity, and Content-Digest integrity.
+
+## Data Science Demo (Python Integration)
+
+To enable **Code Execution** (allowing Claude to analyze your site data with Python), run the official Python MCP server alongside this one.
+
+### 1. Add the Python Server to your Config:
+
+```json
+"python": {
+  "command": "uvx",
+  "args": ["mcp-server-python"]
+}
+```
+
+### 2. Example Prompt:
+
+*"Use list_posts to fetch my site content. Then, use the Python tool to analyze the distribution of post titles and plot a graph of publishing frequency."*

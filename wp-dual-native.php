@@ -12,7 +12,7 @@
 
 if (!defined('ABSPATH')) { exit; }
 
-define('DNI_VERSION', '0.1.0');
+define('DNI_VERSION', '1.0.0');
 define('DNI_DIR', plugin_dir_path(__FILE__));
 
 require_once DNI_DIR . 'includes/class-dni-mr.php';

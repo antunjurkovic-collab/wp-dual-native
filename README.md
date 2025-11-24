@@ -16,7 +16,21 @@ Exposes a clean Machine Representation (MR) and a small catalog for agentic AI t
   - Safe-write (optional): send `If-Match: "<cid>"` to prevent stale writes (412 if mismatched)
   - Write responses include the new `ETag` header (current `cid`) so clients can chain edits without an extra read
 - GET `/wp-json/dual-native/v1/posts/{id}/ai/suggest` — heuristic (or external) summary + tag suggestions
-- Editor sidebar “Dual‑Native AI”: insert at cursor (H2), preview MR, suggest & apply summary, copy MR JSON, open Markdown MR
+- Editor sidebar "Dual‑Native AI": insert at cursor (H2), preview MR, suggest & apply summary, copy MR JSON, open Markdown MR
+
+## 🧩 Ecosystem Integration
+
+This plugin is designed to be composable. While it works as a standalone Data Layer, it becomes even more powerful when connected to the official WordPress AI stack.
+
+**Using the Abilities API or WP AI Client?**
+Check out the **[Dual-Native Abilities Bridge](https://github.com/antunjurkovic-collab/wp-dual-native-abilities)**.
+
+This addon plugin:
+*   Registers DNI endpoints as standard **Abilities** (`dni/get-post-mr`, `dni/insert-blocks`, `dni/agentic-summarize`).
+*   Connects the **WP AI Client SDK** to the DNI Data Layer.
+*   Enables the "Agentic Summarize" workflow (Read MR → Think via SDK → Safe Write).
+
+---
 
 ## Install
 1. Copy `wp-dual-native/` into `wp-content/plugins/`
@@ -122,7 +136,7 @@ This plugin includes a production-ready **Model Context Protocol (MCP)** server 
 
 For full documentation on the MCP tools and Python integration, see [tools/mcp-server/README.md](tools/mcp-server/README.md).
 
-## 📊 Benchmarks & Validation
+## Benchmarks & Validation
 
 We include a suite of Python tools to verify performance claims and API integrity.
 

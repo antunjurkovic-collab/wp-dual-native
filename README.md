@@ -8,7 +8,10 @@ Exposes a clean Machine Representation (MR) and a small catalog for agentic AI t
   - categories/tags (sorted by ID), blocks[], core_content_text, word_count
   - links: human_url, api_url, md_url, public_api_url, public_md_url
   - ETag (=cid), Last-Modified, and Content-Digest (RFC 9530) on 200 responses
-- GET `/wp-json/dual-native/v1/catalog?since=ISO&status=...&types=...` — small index for zero-fetch
+- GET `/wp-json/dual-native/v1/catalog` — small index for zero-fetch
+  - Query params: `cursor=ISO` or `since=ISO` (incremental sync), `status=draft|publish|any`, `types=post,page,attachment` (comma-separated list)
+  - Returns: `{count, cursor, items:[{rid, cid, modified, status, title, hr, mr}]}`
+  - Example: `/catalog?types=attachment&status=inherit` (media library) or `/catalog?cursor=2025-11-20T00:00:00+00:00` (changes since Nov 20)
 - GET `/wp-json/dual-native/v1/posts/{id}/md` — Markdown MR (text/markdown; ETag over final bytes)
 - POST `/wp-json/dual-native/v1/posts/{id}/blocks` — insert one or more blocks
   - Body: `{ insert: "append"|"prepend"|"index", index?: number, block?: {...} or blocks?: [{...}] }`

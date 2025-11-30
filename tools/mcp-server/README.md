@@ -20,32 +20,15 @@ Add the following to your `claude_desktop_config.json`.
 - **Mac:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 - **Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
-**Mac/Linux:**
 ```json
 {
   "mcpServers": {
     "wordpress": {
-      "command": "npx",
-      "args": ["-y", "tsx", "/absolute/path/to/your/wp-dual-native/tools/mcp-server/src/index.ts"],
+      "command": "npm",
+      "args": ["start"],
+      "cwd": "/absolute/path/to/your/wp-dual-native/tools/mcp-server",
       "env": {
-        "WP_URL": "https://your-site.com",
-        "WP_USER": "your-username",
-        "WP_PASSWORD": "your-application-password"
-      }
-    }
-  }
-}
-```
-
-**Windows:**
-```json
-{
-  "mcpServers": {
-    "wordpress": {
-      "command": "npx",
-      "args": ["-y", "tsx", "C:\\Users\\YourName\\Desktop\\wp-dual-native\\tools\\mcp-server\\src\\index.ts"],
-      "env": {
-        "WP_URL": "https://your-site.com",
+        "WP_URL": "https://your-site.local",
         "WP_USER": "your-username",
         "WP_PASSWORD": "your-application-password"
       }
@@ -58,7 +41,10 @@ Add the following to your `claude_desktop_config.json`.
 
 ### Reading (Machine Representation)
 
-- **`list_posts`**: Get a catalog of recent posts (supports status/since filters).
+- **`list_posts`**: Get a catalog of recent posts (supports status/since/cursor/types filters).
+  - Params: `status` (draft|publish|any), `since` or `cursor` (ISO timestamp for incremental sync), `types` (comma-separated: `post,page,attachment`)
+  - Example: `types=attachment&status=inherit` (media library) or `cursor=2025-11-20T00:00:00+00:00` (changes since Nov 20)
+  - Returns: `{count, cursor, items:[{rid, cid, modified, status, title, hr, mr}]}`
 - **`read_mr`**: Fetch the Machine Representation (JSON) of a post. Optimized for AI context (saves ~60% tokens vs HTML).
 - **`read_md`**: Fetch the raw Markdown content.
 

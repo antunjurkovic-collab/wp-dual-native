@@ -84,29 +84,44 @@ class DNI_REST {
 
     public static function get_post_mr(WP_REST_Request $req){
         $id = (int)$req['id'];
-        $mr = DNI_MR::build($id);
-        if (!$mr) return new WP_REST_Response(array('error'=>'not_found'), 404);
 
-        // Compute/Load CID and attach
-        $cid = get_post_meta($id, '_dni_cid', true);
-        if (!$cid){ $cid = DNI_CID::compute($mr); update_post_meta($id, '_dni_cid', $cid); }
-        $mr['cid'] = $cid;
-
-        // Conditional GET
+        // Fast-path: if we already have a CID and If-None-Match matches it, return 304 without building MR
+        $stored_cid = (string) get_post_meta($id, '_dni_cid', true);
         $inm = (string)$req->get_header('if-none-match');
         if ($inm === '' && isset($_SERVER['HTTP_IF_NONE_MATCH'])) { $inm = trim((string)$_SERVER['HTTP_IF_NONE_MATCH']); }
-        $matches = false;
-        if ($inm){
+        if ($stored_cid !== '' && $inm){
+            $matches = false;
             foreach (explode(',', $inm) as $tok){
                 $t = trim($tok);
                 if (stripos($t, 'W/') === 0) { $t = trim(substr($t, 2)); }
                 if (strlen($t) >= 2 && $t[0] === '"' && substr($t, -1) === '"') { $t = substr($t, 1, -1); }
-                if ($t === $cid){ $matches = true; break; }
+                if ($t === $stored_cid){ $matches = true; break; }
+            }
+            if ($matches){
+                $resp = new WP_REST_Response(null, 304);
+                $resp->header('ETag', '"' . $stored_cid . '"');
+                $modified_gmt = get_post_field('post_modified_gmt', $id);
+                if (!empty($modified_gmt)){
+                    $resp->header('Last-Modified', gmdate('D, d M Y H:i:s', strtotime($modified_gmt)) . ' GMT');
+                }
+                $resp->header('Cache-Control', 'max-age=0, must-revalidate');
+                return $resp;
             }
         }
-        $status = $matches ? 304 : 200;
-        $resp = new WP_REST_Response($matches ? null : $mr, $status);
+
+        // Build MR only when necessary (no cached CID or validator mismatch)
+        $mr = DNI_MR::build($id);
+        if (!$mr) return new WP_REST_Response(array('error'=>'not_found'), 404);
+
+        $cid = $stored_cid;
+        if ($cid === ''){ $cid = DNI_CID::compute($mr); update_post_meta($id, '_dni_cid', $cid); }
+        $mr['cid'] = $cid;
+
+        $resp = new WP_REST_Response($mr, 200);
         $resp->header('ETag', '"' . $cid . '"');
+        if (defined('DNI_PROFILE')){
+            $resp->header('Content-Type', 'application/json; profile="' . DNI_PROFILE . '"');
+        }
         if (!empty($mr['modified'])){ $resp->header('Last-Modified', gmdate('D, d M Y H:i:s', strtotime($mr['modified'])) . ' GMT'); }
         $resp->header('Cache-Control', 'max-age=0, must-revalidate');
         return $resp;
@@ -137,7 +152,9 @@ class DNI_REST {
     }
 
     public static function get_catalog(WP_REST_Request $req){
+        // Support both 'since' and 'cursor' as time-based incremental tokens
         $since = $req->get_param('since');
+        if (!$since) { $since = $req->get_param('cursor'); }
         $status = $req->get_param('status'); // draft|publish|any
         $types  = $req->get_param('types');  // comma list or empty
 
@@ -152,6 +169,9 @@ class DNI_REST {
             'orderby' => 'modified',
             'order' => 'DESC',
             'fields' => 'ids',
+            'no_found_rows' => true,
+            'update_post_term_cache' => false,
+            'update_post_meta_cache' => false,
         );
         $args = apply_filters('dni_catalog_args', $args, $req);
         if ($since){
@@ -159,21 +179,36 @@ class DNI_REST {
         }
         $ids = get_posts($args);
         $items = array();
+        $max_modified_iso = null;
         foreach ((array)$ids as $id){
             if (!current_user_can('edit_post', $id)) continue;
-            $mr = DNI_MR::build((int)$id);
-            if (!$mr) continue;
-            $cid = get_post_meta($id, '_dni_cid', true);
-            if (!$cid){ $cid = DNI_CID::compute($mr); update_post_meta($id, '_dni_cid', $cid); }
+            $cid = (string) get_post_meta($id, '_dni_cid', true);
+            if ($cid === ''){
+                $mr_for_cid = DNI_MR::build((int)$id);
+                if (!$mr_for_cid) continue;
+                $cid = DNI_CID::compute($mr_for_cid);
+                update_post_meta($id, '_dni_cid', $cid);
+            }
+            $modified_gmt = get_post_field('post_modified_gmt', $id);
+            $status_val = get_post_status($id);
+            $title_val = get_the_title($id);
+            $hr_url = get_permalink($id);
+            $mr_url = rest_url('dual-native/v1/posts/'.$id);
+            $modified_iso = $modified_gmt ? gmdate('c', strtotime($modified_gmt)) : null;
             $items[] = array(
                 'rid' => (int)$id,
                 'cid' => $cid,
-                'modified' => $mr['modified'],
-                'status' => $mr['status'],
-                'title' => $mr['title'],
+                'modified' => $modified_iso,
+                'status' => $status_val ?: null,
+                'title' => $title_val,
+                'hr' => $hr_url,
+                'mr' => $mr_url,
             );
+            if ($modified_iso && ($max_modified_iso === null || strcmp($modified_iso, $max_modified_iso) > 0)){
+                $max_modified_iso = $modified_iso;
+            }
         }
-        return array('count'=>count($items),'items'=>$items);
+        return array('count'=>count($items),'cursor'=>$max_modified_iso,'items'=>$items);
     }
 
     public static function post_insert_block(WP_REST_Request $req){
@@ -189,15 +224,23 @@ class DNI_REST {
                 $cur = get_post_meta($id, '_dni_cid', true);
                 if (!$cur){ $cur = DNI_CID::compute($current_mr); update_post_meta($id, '_dni_cid', $cur); }
                 $ok = false;
+                $expected_first = null;
                 foreach (explode(',', $ifm) as $tok){
                     $t = trim($tok);
                     if ($t === '*'){ $ok = true; break; }
                     if (stripos($t, 'W/') === 0) { $t = trim(substr($t, 2)); }
                     if (strlen($t) >= 2 && $t[0] === '"' && substr($t, -1) === '"') { $t = substr($t, 1, -1); }
+                    if ($expected_first === null && $t !== ''){ $expected_first = $t; }
                     if ($t === $cur){ $ok = true; break; }
                 }
                 if (!$ok){
-                    $resp = new WP_REST_Response(array('error'=>'precondition_failed','message'=>'If-Match did not match current CID'), 412);
+                    $resp = new WP_REST_Response(array(
+                        'error' => 'precondition_failed',
+                        'message' => 'If-Match did not match current CID',
+                        'rid' => (int)$id,
+                        'currentCid' => $cur,
+                        'expectedCid' => $expected_first,
+                    ), 412);
                     $resp->header('ETag', '"'.$cur.'"');
                     return $resp;
                 }
@@ -263,6 +306,9 @@ class DNI_REST {
         $resp = new WP_REST_Response($mr, 200);
         // Symmetry: expose current ETag on write responses
         $resp->header('ETag', '"'.$cid.'"');
+        if (defined('DNI_PROFILE')){
+            $resp->header('Content-Type', 'application/json; profile="' . DNI_PROFILE . '"');
+        }
         // Expose insertion metadata via headers
         $resp->header('X-DNI-Top-Level-Count-Before', (string)$count_before);
         $resp->header('X-DNI-Inserted-At', (string)$inserted_at);

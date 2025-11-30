@@ -6,7 +6,7 @@ class DNI_CID {
      * Compute strong CID (sha256-<hex>) over canonical JSON of the provided associative array.
      * Excludes volatile keys and enforces stable key ordering at all levels.
      */
-    public static function compute(array $payload, array $exclude_keys = array('cid')): string {
+    public static function compute(array $payload, array $exclude_keys = array('cid','links')): string {
         $exclude_keys = apply_filters('dni_cid_exclude_keys', $exclude_keys, $payload);
         $clean = self::deep_exclude($payload, $exclude_keys);
         $canonical = self::canonicalize($clean);

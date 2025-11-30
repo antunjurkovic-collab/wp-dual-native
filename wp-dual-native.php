@@ -14,6 +14,10 @@ if (!defined('ABSPATH')) { exit; }
 
 define('DNI_VERSION', '1.0.0');
 define('DNI_DIR', plugin_dir_path(__FILE__));
+// Machine Representation profile identifier (used in Content-Type headers)
+if (!defined('DNI_PROFILE')) {
+    define('DNI_PROFILE', 'dual-native-core-1.0');
+}
 
 require_once DNI_DIR . 'includes/class-dni-mr.php';
 require_once DNI_DIR . 'includes/class-dni-cid.php';
